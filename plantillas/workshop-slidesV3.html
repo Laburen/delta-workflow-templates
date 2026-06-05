@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Workshop Delta · Laburen × Claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Fraunces:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0e0a;
+    --bg-2: #0e120e;
+    --surface: #121712;
+    --surface-2: #161c16;
+    --border: #1f261f;
+    --border-strong: #2a322a;
+    --green: #a3f500;
+    --green-dim: #6fa800;
+    --green-glow: rgba(163, 245, 0, 0.18);
+    --orange: #ff6b35;
+    --text: #e8f5e0;
+    --text-mid: #b3bdb0;
+    --text-dim: #7a8278;
+    --text-faint: #4a514a;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'Outfit', system-ui, sans-serif;
+    --serif: 'Fraunces', Georgia, serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 400;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Subtle gradient mesh on bg */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(163, 245, 0, 0.04) 0%, transparent 35%),
+      radial-gradient(circle at 85% 80%, rgba(163, 245, 0, 0.025) 0%, transparent 40%);
+  }
+
+  /* ============ DECK STRUCTURE ============ */
+  .deck { position: relative; height: 100vh; width: 100vw; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    padding: 56px 80px 64px;
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.45s ease;
+  }
+  .slide.active {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ============ HEADER & FOOTER UI ============ */
+  .frame-top {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 18px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    z-index: 100;
+    pointer-events: none;
+  }
+  .frame-top .brand { color: var(--green); display: flex; align-items: center; gap: 8px; }
+  .frame-top .brand::before {
+    content: '';
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  .frame-bottom {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 18px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    z-index: 100;
+    pointer-events: none;
+  }
+  .counter { color: var(--text-dim); }
+  .counter .now { color: var(--green); font-weight: 700; }
+
+  .nav-hint {
+    display: flex; gap: 14px;
+    color: var(--text-faint);
+  }
+  .nav-hint kbd {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    color: var(--text-dim);
+  }
+
+  /* ============ COMMON ELEMENTS ============ */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 28px;
+    height: 1px;
+    background: var(--green);
+  }
+
+  h1.display {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(56px, 7vw, 104px);
+    line-height: 0.96;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+  h1.display em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--green);
+  }
+
+  h2.section {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(40px, 4.5vw, 64px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 28px;
+  }
+  h2.section em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--green);
+  }
+
+  h3.kicker {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+    margin-bottom: 16px;
+  }
+
+  p.lead {
+    font-family: var(--sans);
+    font-size: clamp(18px, 1.4vw, 22px);
+    line-height: 1.5;
+    color: var(--text-mid);
+    max-width: 70ch;
+    font-weight: 300;
+  }
+
+  p.body {
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--text-mid);
+    max-width: 70ch;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--text-dim);
+  }
+  .tag.green { color: var(--green); border-color: rgba(163, 245, 0, 0.4); background: rgba(163, 245, 0, 0.05); }
+  .tag.orange { color: var(--orange); border-color: rgba(255, 107, 53, 0.4); background: rgba(255, 107, 53, 0.05); }
+
+  /* ============ SLIDE 1: COVER ============ */
+  .cover {
+    justify-content: center;
+    position: relative;
+  }
+  .cover-bigmark {
+    position: absolute;
+    right: 80px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: clamp(180px, 24vw, 380px);
+    font-weight: 200;
+    line-height: 1;
+    color: var(--green);
+    opacity: 0.08;
+    user-select: none;
+  }
+  .cover h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(64px, 8vw, 120px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    margin-bottom: 36px;
+  }
+  .cover h1 em {
+    font-style: italic;
+    color: var(--green);
+  }
+  .cover .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 48px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+  .cover .meta span { display: flex; align-items: center; gap: 8px; }
+  .cover .meta span::before {
+    content: '';
+    width: 4px; height: 4px;
+    background: var(--text-faint);
+    border-radius: 50%;
+  }
+
+  /* ============ AGENDA / NUMBERED LIST ============ */
+  .agenda-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px 64px;
+    margin-top: 48px;
+    max-width: 1100px;
+  }
+  .agenda-item {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    position: relative;
+  }
+  .agenda-item .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--green);
+    margin-bottom: 10px;
+  }
+  .agenda-item .title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .agenda-item .desc {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+  .agenda-item .duration {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.12em;
+    margin-top: 8px;
+  }
+
+  /* ============ TWO COLUMN ============ */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: start;
+    margin-top: 24px;
+  }
+  .two-col.weighted {
+    grid-template-columns: 5fr 4fr;
+  }
+
+  /* ============ COMPARE BOX ============ */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 36px;
+  }
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .compare-card.opus { border-color: rgba(163, 245, 0, 0.3); }
+  .compare-card.opus::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: var(--green);
+  }
+  .compare-card.sonnet { border-color: rgba(255, 107, 53, 0.3); }
+  .compare-card.sonnet::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: var(--orange);
+  }
+  .compare-card .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .compare-card.opus .label { color: var(--green); }
+  .compare-card.sonnet .label { color: var(--orange); }
+  .compare-card h4 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 28px;
+    margin-bottom: 16px;
+    letter-spacing: -0.015em;
+  }
+  .compare-card ul {
+    list-style: none;
+    padding: 0;
+  }
+  .compare-card li {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--text-mid);
+    padding-left: 18px;
+    position: relative;
+    margin-bottom: 6px;
+  }
+  .compare-card li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--text-faint);
+    font-family: var(--mono);
+  }
+
+  /* ============ PHILOSOPHY (centered quote) ============ */
+  .philosophy {
+    justify-content: center;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .philosophy .quote {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(40px, 5vw, 76px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    max-width: 1100px;
+  }
+  .philosophy .quote em {
+    font-style: italic;
+    color: var(--green);
+  }
+  .philosophy .attribution {
+    margin-top: 48px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ============ FLOW DIAGRAM ============ */
+  .flow {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .flow-row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    align-items: stretch;
+    gap: 24px;
+  }
+  .flow-row .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+    padding-top: 16px;
+    letter-spacing: 0.1em;
+    border-right: 1px solid var(--border);
+  }
+  .flow-row .step-content {
+    padding: 14px 20px 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .flow-row .step-title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 20px;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    min-width: 280px;
+  }
+  .flow-row .step-model {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    padding: 3px 9px;
+    border-radius: 2px;
+  }
+  .flow-row .step-model.opus {
+    color: var(--green);
+    background: rgba(163, 245, 0, 0.08);
+    border: 1px solid rgba(163, 245, 0, 0.25);
+  }
+  .flow-row .step-model.sonnet {
+    color: var(--orange);
+    background: rgba(255, 107, 53, 0.08);
+    border: 1px solid rgba(255, 107, 53, 0.25);
+  }
+  .flow-row .step-model.delta {
+    color: var(--text);
+    background: rgba(232, 245, 224, 0.06);
+    border: 1px solid var(--border-strong);
+  }
+  .flow-row .step-output {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  /* ============ TASK BLOCK / CODE-STYLE BOX ============ */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--green);
+    border-radius: 0 4px 4px 0;
+    padding: 24px 28px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-mid);
+    overflow: auto;
+    max-height: 100%;
+  }
+  .code-block .ck { color: var(--green); }
+  .code-block .ck-orange { color: var(--orange); }
+  .code-block .ck-dim { color: var(--text-faint); }
+  .code-block .ck-bold { color: var(--text); font-weight: 600; }
+  .code-block .ck-strike { text-decoration: line-through; color: var(--text-faint); }
+
+  /* ============ STAT TILES ============ */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    margin-top: 36px;
+  }
+  .stat-tile {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+  .stat-tile .big {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--green);
+    letter-spacing: -0.03em;
+    margin-bottom: 10px;
+  }
+  .stat-tile .label {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text-mid);
+    line-height: 1.45;
+    max-width: 30ch;
+  }
+
+  /* ============ CHECKLIST ============ */
+  .check-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 24px;
+    display: grid;
+    gap: 12px;
+  }
+  .check-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .check-list .marker {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--green);
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 24px;
+  }
+  .check-list .marker.no { color: var(--orange); }
+  .check-list .desc { color: var(--text-mid); font-size: 14px; margin-top: 4px; }
+
+  /* ============ HIGHLIGHT CARD ============ */
+  .highlight {
+    background: linear-gradient(135deg, rgba(163, 245, 0, 0.06), rgba(163, 245, 0, 0.02));
+    border: 1px solid rgba(163, 245, 0, 0.25);
+    border-radius: 4px;
+    padding: 28px 32px;
+    margin-top: 28px;
+    position: relative;
+  }
+  .highlight .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+  .highlight .text {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 26px;
+    line-height: 1.25;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .highlight.warning {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.07), rgba(255, 107, 53, 0.02));
+    border-color: rgba(255, 107, 53, 0.3);
+  }
+  .highlight.warning .label { color: var(--orange); }
+
+  /* ============ TABLE ============ */
+  .table {
+    margin-top: 28px;
+    border-top: 1px solid var(--border-strong);
+  }
+  .table-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    gap: 24px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: baseline;
+  }
+  .table-row.head {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 12px 0;
+  }
+  .table-row .col-1 {
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .table-row .col-2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .table-row .col-2.opus { color: var(--green); }
+  .table-row .col-2.sonnet { color: var(--orange); }
+  .table-row .col-3 {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.45;
+  }
+
+  /* ============ ETAPA HEADER ============ */
+  .stage-header {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    margin-bottom: 36px;
+  }
+  .stage-header .number {
+    font-family: var(--mono);
+    font-size: 96px;
+    font-weight: 200;
+    line-height: 1;
+    color: var(--green);
+    letter-spacing: -0.04em;
+  }
+  .stage-header .info {
+    flex: 1;
+  }
+  .stage-header .info .small {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 8px;
+  }
+  .stage-header .info .big {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+  .stage-header .info .big em {
+    font-style: italic;
+    color: var(--green);
+  }
+
+  /* ============ ATOM DIAGRAM ============ */
+  .atom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 32px;
+  }
+  .atom-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    background: var(--surface);
+  }
+  .atom-card.bad {
+    border-color: rgba(255, 107, 53, 0.3);
+  }
+  .atom-card.good {
+    border-color: rgba(163, 245, 0, 0.3);
+  }
+  .atom-card .head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .atom-card.bad .symbol { color: var(--orange); }
+  .atom-card.good .symbol { color: var(--green); }
+  .atom-card .symbol {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .atom-card .title {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .atom-card .title-text { font-family: var(--mono); font-size: 13px; color: var(--text-mid); margin-bottom: 16px; }
+  .atom-card .files {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 3px;
+  }
+  .atom-card .stat {
+    margin-top: 16px;
+    display: flex;
+    gap: 18px;
+  }
+  .atom-card .stat-item {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .atom-card .stat-item strong { color: var(--text); font-size: 18px; display: block; margin-top: 2px; }
+  .atom-card.bad .stat-item strong { color: var(--orange); }
+  .atom-card.good .stat-item strong { color: var(--green); }
+
+  /* ============ TEMPLATES GRID ============ */
+  .files-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: 32px;
+    max-width: 1100px;
+  }
+  .file-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 20px 22px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 4px;
+  }
+  .file-card .icon {
+    width: 36px; height: 36px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--green);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .file-card .text { flex: 1; }
+  .file-card .name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .file-card .desc {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* ============ FINAL SLIDE ============ */
+  .final {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .final h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(56px, 7vw, 120px);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+  .final h1 em { font-style: italic; color: var(--green); }
+  .final .sub {
+    margin-top: 24px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* ============ ANIMATIONS ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .slide.active > * {
+    animation: fadeUp 0.6s ease backwards;
+  }
+  .slide.active > *:nth-child(1) { animation-delay: 0.05s; }
+  .slide.active > *:nth-child(2) { animation-delay: 0.12s; }
+  .slide.active > *:nth-child(3) { animation-delay: 0.19s; }
+  .slide.active > *:nth-child(4) { animation-delay: 0.26s; }
+  .slide.active > *:nth-child(5) { animation-delay: 0.33s; }
+  .slide.active > *:nth-child(6) { animation-delay: 0.40s; }
+
+  /* ============ MINI BAR (progress) ============ */
+  .progress {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 100;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.4s ease;
+    box-shadow: 0 0 6px var(--green-glow);
+  }
+
+  /* ============ PRINT ============ */
+  @media print {
+    .slide { display: flex !important; opacity: 1 !important; page-break-after: always; height: 100vh; }
+    .frame-top, .frame-bottom, .progress, body::before, body::after { display: none !important; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="frame-top">
+  <span class="brand">Laburen · Workshop Delta</span>
+  <span>Workflow · del relevamiento al merge</span>
+</div>
+
+<div class="frame-bottom">
+  <span class="nav-hint"><kbd>←</kbd> <kbd>→</kbd> navegar · <kbd>F</kbd> fullscreen</span>
+  <span class="counter"><span class="now" id="now">01</span> / <span id="total">25</span></span>
+</div>
+
+<div class="progress"><div class="progress-fill" id="pf"></div></div>
+
+<main class="deck" id="deck">
+
+  <!-- =========== SLIDE 1 — COVER =========== -->
+  <section class="slide cover">
+    <div class="cover-bigmark">Δ</div>
+    <div class="eyebrow">// workshop interno · 2026</div>
+    <h1>Workflow Delta.<br/>Del <em>relevamiento</em><br/>al <em>merge</em>.</h1>
+    <p class="lead" style="margin-top: 32px; max-width: 60ch;">
+      Un proceso disciplinado de seis etapas para entregar software con calidad y acumular menos deuda técnica, con ayuda de la IA.
+    </p>
+    <div class="meta">
+      <span>Ariel Righi · Delta</span>
+      <span>v2.0</span>
+      <span>~50 min + Q&amp;A</span>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 2 — AGENDA =========== -->
+  <section class="slide">
+    <div class="eyebrow">// agenda</div>
+    <h2 class="section">La <em>agenda</em>.</h2>
+
+    <div class="agenda-grid">
+      <div class="agenda-item">
+        <div class="num">01 · Bloque uno</div>
+        <div class="title">Por qué el workflow</div>
+        <div class="desc">El problema que resuelve un proceso disciplinado. Las 6 etapas en una vista. La filosofía.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num">02 · Bloque dos</div>
+        <div class="title">Planificación</div>
+        <div class="desc">Análisis del relevamiento → ADRs → Historias de Usuario → Tareas técnicas atómicas → Backlog.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num">03 · Bloque tres</div>
+        <div class="title">Desarrollo y entrega</div>
+        <div class="desc">Branch + TDD + testing manual → PR + feedback del reviewer de IA → merge del Delta → cierre.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num">04 · Bloque cuatro</div>
+        <div class="title">Plantillas + Q&amp;A</div>
+        <div class="desc">Las 5 plantillas listas para clonar al repo. Qué herramienta usar en cada etapa. Cierre.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 3 — POR QUÉ =========== -->
+  <section class="slide">
+    <div class="eyebrow">// el problema</div>
+    <h2 class="section">Sin método, el trabajo se <em>desorganiza</em>.</h2>
+
+    <div style="margin-top: 56px; padding: 36px 40px; background: linear-gradient(135deg, rgba(163, 245, 0, 0.08), rgba(163, 245, 0, 0.02)); border: 1px solid rgba(163, 245, 0, 0.3); border-radius: 4px; position: relative;">
+      <div style="font-family:var(--mono); font-size:11px; color:var(--green); font-weight:700; letter-spacing:0.2em; margin-bottom:18px;">// objetivo del workshop</div>
+      <div style="font-family: var(--serif); font-weight: 300; font-size: clamp(28px, 3vw, 40px); line-height: 1.2; letter-spacing: -0.018em; color: var(--text);">
+        Que cualquier Delta adopte un <em style="font-style:italic;color:var(--green)">método de planificación</em> reproducible: analizar el relevamiento, crear HUs, partir en tareas atómicas, armar el backlog.
+      </div>
+    </div>
+
+    <div style="margin-top: 28px; padding: 14px 20px; border-left: 2px solid var(--border-strong); background: rgba(0,0,0,0.15);">
+      <div style="font-family:var(--mono); font-size:10px; color:var(--text-dim); font-weight:600; letter-spacing:0.18em; margin-bottom:6px;">// jerarquía documental</div>
+      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-dim); line-height: 1.55; margin: 0;">
+        Este workshop enseña el <strong style="color:var(--text-mid)">método</strong>. El <strong style="color:var(--text-mid)">stack Laburen</strong> y los procesos del equipo se documentan oficialmente en la guía web: <code style="font-family:var(--mono);font-size:12px;color:var(--green)">laburen.gitbook.io/laburen-docs/7NYbsch7fTyhsarLow8z</code> — <strong style="color:var(--text-mid)">fuente canónica</strong>.
+      </p>
+      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-dim); line-height: 1.55; margin: 10px 0 0 0;">
+        En el repo de cada proyecto vive un resumen ejecutivo en <code style="font-family:var(--mono);font-size:12px;color:var(--text-mid)">CONTEXTO-EMPRESA-METODOLOGIA.md</code> — pedido al agente para que el agente y el equipo tengan el contexto a mano, sin reemplazar la guía web.
+      </p>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 4 — FILOSOFÍA =========== -->
+  <section class="slide philosophy">
+    <div class="eyebrow">// principio</div>
+    <div class="quote">
+      <em>Documentar</em> con criterio.<br/>
+      Partir en <em>tareas atómicas</em>.<br/>
+      El <em>Delta</em> decide siempre.<br/>
+      La IA <em>acelera</em>, no reemplaza.
+    </div>
+
+    <div style="margin-top: 48px; padding: 20px 26px; border-left: 2px solid var(--green); background: rgba(163, 245, 0, 0.04); max-width: 80ch;">
+      <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:10px;">// nota del autor</div>
+      <p style="font-family: var(--sans); font-size: 17px; line-height: 1.55; color: var(--text-mid); margin: 0; font-weight: 300;">
+        Este workshop te da el proceso <strong style="color:var(--text)">completo y disciplinado</strong>. Con experiencia vas a ajustar — saltar pasos, fusionar etapas, romper alguna regla con conciencia. Pero arrancá disciplinado: <em style="font-style:italic;color:var(--green)">el método se rompe bien recién cuando lo seguiste sin romper</em>.
+      </p>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 5 — PLANIFICACIÓN vs DESARROLLO =========== -->
+  <section class="slide">
+    <div class="eyebrow">// herramienta correcta · tarea correcta</div>
+    <h2 class="section">Dos <em>naturalezas</em> de trabajo.</h2>
+    <p class="lead">El workshop separa dos fases con necesidades distintas. Usá un modelo para cada una — la elección concreta es tuya.</p>
+
+    <div class="compare">
+      <div class="compare-card opus">
+        <div class="label">// fase de planificación</div>
+        <h4>Razonamiento profundo</h4>
+        <ul>
+          <li>Análisis del relevamiento</li>
+          <li>Decisiones arquitectónicas (ADRs)</li>
+          <li>Historias de Usuario</li>
+          <li>Tareas técnicas atómicas + estimación</li>
+          <li>Documentación del proyecto</li>
+        </ul>
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-dim); line-height: 1.6;">
+          Sugerencia: <span style="color:var(--green); font-weight:700;">Claude Opus</span> o un modelo equivalente de razonamiento profundo. <em style="font-style: italic; color: var(--text-faint);">A elección del Delta.</em>
+        </div>
+      </div>
+      <div class="compare-card sonnet">
+        <div class="label">// fase de desarrollo</div>
+        <h4>Velocidad y código</h4>
+        <ul>
+          <li>Desarrollo de tareas (TDD)</li>
+          <li>Tests automatizados</li>
+          <li>Refactors mecánicos</li>
+          <li>Commits y mensajes de PR</li>
+          <li>Procesar feedback de PR</li>
+        </ul>
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text-dim); line-height: 1.6;">
+          Sugerencia: <span style="color:var(--orange); font-weight:700;">Claude Sonnet</span> o un modelo equivalente rápido. <em style="font-style: italic; color: var(--text-faint);">A elección del Delta.</em>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight" style="margin-top: 28px;">
+      <div class="label">// regla simple</div>
+      <div class="text" style="font-size: 20px;">Si la decisión es difícil de revertir <em style="font-style: italic; color: var(--green);">→ razonamiento profundo</em>. Si es implementación reversible <em style="font-style: italic; color: var(--orange);">→ velocidad</em>.</div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 6 — EL CICLO COMPLETO =========== -->
+  <section class="slide">
+    <div class="eyebrow">// el ciclo completo</div>
+    <h2 class="section">Seis etapas, <em>un solo flujo</em>.</h2>
+
+    <div class="flow">
+      <div class="flow-row">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <div class="step-title">Análisis del relevamiento</div>
+          <div class="step-model opus">PLANIFICACIÓN</div>
+          <div class="step-output">→ RESUMEN-RELEVAMIENTO.md</div>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <div class="step-title">Decisiones arquitectónicas / ADRs</div>
+          <div class="step-model opus">PLANIFICACIÓN</div>
+          <div class="step-output">→ DECISIONES-ARQ.md</div>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <div class="step-title">Historias de Usuario</div>
+          <div class="step-model opus">PLANIFICACIÓN</div>
+          <div class="step-output">→ BACKLOG.md (HUs)</div>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <div class="step-title">Tareas técnicas atómicas</div>
+          <div class="step-model opus">PLANIFICACIÓN</div>
+          <div class="step-output">→ BACKLOG.md + Asana</div>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <div class="step-title">Desarrollo y testing</div>
+          <div class="step-model sonnet">DESARROLLO</div>
+          <div class="step-output">→ feature branch + CI verde</div>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="step-num">06</div>
+        <div class="step-content">
+          <div class="step-title">PR + feedback · merge del Delta · cierre</div>
+          <div class="step-model delta">ENTREGA</div>
+          <div class="step-output">→ merge a develop + Asana ✓</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 7 — SETUP DEL REPO =========== -->
+  <section class="slide">
+    <div class="eyebrow">// setup · antes de arrancar</div>
+    <h2 class="section">El repo <em>es</em> el contexto.</h2>
+
+    <p class="lead">Todo lo que el agente necesita leer vive en el repo. No hay "Project en claude.ai", no hay adjuntos sueltos. Los prompts referencian rutas, no pegan contenido.</p>
+
+    <div class="two-col weighted">
+      <div>
+        <h3 class="kicker">// estructura inicial</h3>
+        <div class="code-block">
+<span class="ck">{proyecto}/</span><br/>
+├── README.md<br/>
+└── <span class="ck">docs/</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;├── relevamiento-{proyecto}.{html,pdf,md}<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;├── CONTEXTO-EMPRESA-METODOLOGIA.md<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ck-dim">(resto se genera en las próximas etapas)</span>
+        </div>
+      </div>
+      <div>
+        <h3 class="kicker">// ventajas</h3>
+        <ul style="list-style: none; padding: 0;">
+          <li style="padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-mid);"><strong style="color:var(--green); font-family: var(--mono);">→</strong> Versionado del contexto con el código</li>
+          <li style="padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-mid);"><strong style="color:var(--green); font-family: var(--mono);">→</strong> Continuidad entre sesiones</li>
+          <li style="padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-mid);"><strong style="color:var(--green); font-family: var(--mono);">→</strong> Onboarding inmediato</li>
+          <li style="padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-mid);"><strong style="color:var(--green); font-family: var(--mono);">→</strong> Tokens optimizados — lee solo lo que necesita</li>
+          <li style="padding: 10px 0; font-size: 15px; color: var(--text-mid);"><strong style="color:var(--green); font-family: var(--mono);">→</strong> Agnóstico de entorno y agente</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 8 — ETAPA 1 ANÁLISIS =========== -->
+  <section class="slide">
+    <div class="stage-header">
+      <div class="number">01</div>
+      <div class="info">
+        <div class="small">// etapa uno</div>
+        <div class="big">Análisis del <em>relevamiento</em>.</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h3 class="kicker">// qué produce</h3>
+        <p class="body" style="margin-bottom: 20px;">Un único documento <code style="font-family:var(--mono);color:var(--green);font-size:13px;">docs/RESUMEN-RELEVAMIENTO.md</code> en dos partes:</p>
+
+        <div style="margin-top: 16px;">
+          <div style="font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:0.15em; margin-bottom: 8px;">PARTE 1 · RESUMEN EJECUTIVO</div>
+          <p class="body" style="font-size:14px;">Actores, flujos macro, modelo de datos, integraciones, reglas de negocio, pendientes del cliente, fuera de scope.</p>
+        </div>
+
+        <div style="margin-top: 24px;">
+          <div style="font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:0.15em; margin-bottom: 8px;">PARTE 2 · ANÁLISIS CRÍTICO</div>
+          <p class="body" style="font-size:14px;">A. Bloqueantes duros — B. Decisiones arquitectónicas — C. Riesgos a mitigar — D. Consideraciones futuras.</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="kicker">// qué pelear del output</h3>
+        <ul class="check-list" style="margin-top: 0;">
+          <li>
+            <span class="marker no">✗</span>
+            <div>
+              <div>Confundir <strong>pendiente del cliente</strong> con limitación técnica</div>
+              <div class="desc">"Faltan credenciales" no es limitación técnica.</div>
+            </div>
+          </li>
+          <li>
+            <span class="marker no">✗</span>
+            <div>
+              <div>Inflar el número de bloqueantes</div>
+              <div class="desc">A veces son riesgos, no bloqueantes.</div>
+            </div>
+          </li>
+          <li>
+            <span class="marker no">✗</span>
+            <div>
+              <div>Saltarse <strong>riesgos sutiles</strong></div>
+              <div class="desc">Concurrencia, idempotencia, OAuth refresh, rate limits.</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 9 — ETAPA 2 ADRs =========== -->
+  <section class="slide">
+    <div class="stage-header">
+      <div class="number">02</div>
+      <div class="info">
+        <div class="small">// etapa dos</div>
+        <div class="big">Decisiones <em>arquitectónicas</em>.</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <p class="lead">Para cada decisión arquitectónica genuina que identifiques en el relevamiento, un ADR.</p>
+
+        <div style="margin-top: 32px; padding: 18px 22px; background: rgba(163, 245, 0, 0.06); border: 1px solid rgba(163, 245, 0, 0.25); border-radius: 3px;">
+          <div style="font-family:var(--mono); font-size:11px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:14px;">✓ AMERITA ADR</div>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            <li style="font-family:var(--sans); font-size:15px; color:var(--text-mid); line-height:1.6; padding: 6px 0;">→ Difícil de revertir</li>
+            <li style="font-family:var(--sans); font-size:15px; color:var(--text-mid); line-height:1.6; padding: 6px 0;">→ Afecta múltiples componentes o flujos</li>
+            <li style="font-family:var(--sans); font-size:15px; color:var(--text-mid); line-height:1.6; padding: 6px 0;">→ 2+ opciones reales con trade-offs</li>
+            <li style="font-family:var(--sans); font-size:15px; color:var(--text-mid); line-height:1.6; padding: 6px 0;">→ Cliente o equipo necesita conocer y aprobar</li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="kicker">// estructura del ADR</h3>
+        <div class="code-block" style="font-size: 12px;">
+<span class="ck">Estado:</span> abierto / DECIDIDO (fecha)<br/>
+<span class="ck">Sprint que afecta:</span> N<br/>
+<span class="ck">Quién decide:</span> Delta / cliente / mixto<br/>
+<span class="ck">Contexto:</span> el problema, qué pasa si no se decide<br/>
+<span class="ck">Opciones:</span> 2-3 reales <span class="ck-dim">— no inventar relleno</span><br/>
+<span class="ck">Trade-offs:</span> tabla con criterios discriminantes<br/>
+<span class="ck">Recomendación:</span> 2-3 párrafos<br/>
+<span class="ck">Qué necesito para cerrar</span><br/>
+<span class="ck">Impacto de no decidir</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 10 — ETAPA 3 HUs =========== -->
+  <section class="slide">
+    <div class="stage-header">
+      <div class="number">03</div>
+      <div class="info">
+        <div class="small">// etapa tres</div>
+        <div class="big">Backlog · <em>HUs primero</em>.</div>
+      </div>
+    </div>
+
+    <div class="two-col weighted">
+      <div>
+        <h3 class="kicker">// formato</h3>
+        <div class="code-block" style="font-size: 12.5px; line-height: 1.7;">
+<span class="ck-bold">### HUI-NNN: Título de negocio</span><br/><br/>
+<span class="ck-dim">Como</span> [actor concreto — nombre, rol]<br/>
+<span class="ck-dim">Quiero</span> [acción atómica]<br/>
+<span class="ck-dim">Para</span> [beneficio de negocio]<br/><br/>
+<span class="ck">#### Criterios de Aceptación:</span><br/><br/>
+1. Dado que [precondición]<br/>
+&nbsp;&nbsp;&nbsp;Cuando [evento]<br/>
+&nbsp;&nbsp;&nbsp;Entonces [resultado <span class="ck">testeable</span>]<br/><br/>
+<span class="ck-dim">[3 a 7 criterios — camino feliz + edge cases + errores]</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="kicker">// qué es una hu</h3>
+        <p class="body" style="font-size: 16px; line-height: 1.65; margin-top: 4px;">
+          Una <strong style="color:var(--text)">Historia de Usuario</strong> describe una necesidad del negocio desde la perspectiva de un actor concreto.
+        </p>
+        <p class="body" style="font-size: 16px; line-height: 1.65; margin-top: 18px;">
+          No es una tarea técnica — es <em style="font-style:italic;color:var(--green)">qué quiere lograr alguien y por qué</em>. Las HUs son el <strong style="color:var(--text)">punto de partida del que se derivan las tareas técnicas</strong>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 11 — ETAPA 4 TAREAS TÉCNICAS =========== -->
+  <section class="slide">
+    <div class="stage-header">
+      <div class="number">04</div>
+      <div class="info">
+        <div class="small">// etapa cuatro · ★ crítica</div>
+        <div class="big">Tareas técnicas <em>atómicas</em>.</div>
+      </div>
+    </div>
+
+    <p class="lead">Las tareas técnicas se derivan de las HUs. Le pedimos al agente que las genere <strong style="color:var(--text)">atómicas</strong> y en <strong style="color:var(--text)">orden recomendado de desarrollo</strong> — no alfabético, no por HU: orden real considerando dependencias técnicas y ruta crítica.</p>
+
+    <div class="two-col" style="margin-top: 32px;">
+      <div>
+        <h3 class="kicker">// por qué atómicas</h3>
+        <ul class="check-list" style="margin-top: 0;">
+          <li>
+            <span class="marker">→</span>
+            <div><strong>Control</strong> · lotes chicos se revisan mejor, los errores no se acumulan</div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div><strong>Recuperación rápida</strong> · si una tarea falla, perdés horas, no días</div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div><strong>Estimación realista</strong> · lotes chicos se estiman con menos error</div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div><strong>PR review eficaz</strong> · 400 líneas se revisa bien, 1000 se aprueba sin leer</div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div><strong>(Bonus IA)</strong> evita que el agente comprima contexto a mitad de tarea</div>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="kicker">// criterios prácticos *</h3>
+        <ul class="check-list" style="margin-top: 0;">
+          <li>
+            <span class="marker">→</span>
+            <div>Toca <strong>1-3 archivos</strong>, máximo 5</div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div>Estimación humana base <strong>≤ 4 horas</strong></div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div>Sub-tareas <strong>concretas, accionables, secuenciales</strong></div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div>Criterios de aceptación <strong>testeables y locales</strong></div>
+          </li>
+          <li>
+            <span class="marker">→</span>
+            <div>Cada tarea cubre al menos <strong>una HU explícita</strong></div>
+          </li>
+        </ul>
+
+        <p style="margin-top: 16px; font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); font-style: italic; line-height: 1.5;">
+          * los números concretos son heurísticas operativas, no estándares de la industria. Calibrá según tu equipo y stack.
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight" style="margin-top: 24px;">
+      <div class="label">// regla operativa</div>
+      <div class="text" style="font-size: 20px;">Si una tarea no entra en estos criterios, <em style="font-style:italic;color:var(--green)">son varias tareas</em>, no una.</div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 12 — EJEMPLO REAL =========== -->
+  <section class="slide">
+    <div class="eyebrow">// ejemplo real · t-if-010</div>
+    <h2 class="section">El formato <em>completo</em>.</h2>
+
+    <div class="code-block" style="margin-top: 24px; font-size: 12.5px; line-height: 1.7;">
+<span class="ck-bold">### T-IF-010: Templates WhatsApp — Redacción y envío a aprobación de Meta</span><br/><br/>
+
+<span class="ck-dim">**Prioridad:**</span> <span class="ck-orange">CRITICA (RUTA CRITICA)</span><br/>
+<span class="ck-dim">**Estimación:**</span> 1-2hs <span class="ck-dim">(+ 24-48hs de espera por Meta)</span><br/>
+<span class="ck-dim">**Dependencias:**</span> Acceso al Meta Business Portfolio (Gabriel)<br/>
+<span class="ck-dim">**Estado:**</span> Pendiente — iniciar el día 1 del sprint<br/>
+<span class="ck-dim">**Tarea Asana:**</span> Sprint 1 — Circuito A<br/>
+<span class="ck-dim">**Cubre HUI:**</span> <span class="ck">HUI-004</span><br/><br/>
+
+<span class="ck">#### Descripción</span><br/>
+Redactar el template <span class="ck-bold">consulta_disponibilidad</span> requerido para el contacto<br/>
+proactivo del Sprint 1 y enviarlo a aprobación de Meta. Sin este template<br/>
+aprobado, HUI-004 no puede ejecutarse.<br/><br/>
+
+<span class="ck">#### Tareas específicas</span><br/>
+<span class="ck">- [ ]</span> Verificar templates ya existentes en la cuenta WA Business<br/>
+<span class="ck">- [ ]</span> Redactar <span class="ck-bold">consulta_disponibilidad</span> (Utility) con variables {{1..5}}<br/>
+<span class="ck">- [ ]</span> Enviar el template a aprobación de Meta<br/>
+<span class="ck">- [ ]</span> Monitorear el estado y re-enviar si Meta lo rechaza<br/>
+<span class="ck">- [ ]</span> Documentar en <span class="ck-bold">docs/TEMPLATES-WA.md</span><br/><br/>
+
+<span class="ck">#### Criterios de aceptación</span><br/>
+- Template redactado siguiendo formato Meta (variables, categoría Utility)<br/>
+- Enviado a aprobación · Estado registrado · Documentado en el repo
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 13 — DEL BACKLOG AL SPRINT (sub-slide planificación) =========== -->
+  <section class="slide">
+    <div class="eyebrow">// definición y carga</div>
+    <h2 class="section">Del backlog <em>al sprint</em>.</h2>
+    <p class="lead">Una vez generadas las tareas técnicas, se cargan todas en Asana como <strong style="color:var(--text)">backlog operativo del proyecto</strong>. Desde ahí se arman los sprints. El <code style="font-family:var(--mono);font-size:0.7em;color:var(--green);background:rgba(163,245,0,0.08);padding:2px 8px;border-radius:3px;">docs/BACKLOG.md</code> del repo sigue siendo la fuente técnica que el agente lee al ejecutar cada tarea.</p>
+
+    <div class="two-col" style="margin-top: 28px;">
+      <div>
+        <h3 class="kicker">// el flujo</h3>
+        <ul class="check-list" style="margin-top: 0;">
+          <li><span class="marker">1</span><div><strong>Tareas generadas</strong> · el agente las escribe en <code style="font-family:var(--mono);font-size:12px;color:var(--green)">docs/BACKLOG.md</code></div></li>
+          <li><span class="marker">2</span><div><strong>Carga a Asana</strong> · las mismas tareas se trasladan al backlog operativo</div></li>
+          <li><span class="marker">3</span><div><strong>Sprint planning</strong> · del backlog en Asana se arma el sprint en curso</div></li>
+          <li><span class="marker">4</span><div><strong>Ejecución</strong> · el Delta toma las tareas del sprint; el agente lee el detalle desde <code style="font-family:var(--mono);font-size:12px;color:var(--green)">BACKLOG.md</code></div></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="kicker">// dos fuentes complementarias</h3>
+
+        <div style="margin-top: 20px; padding: 18px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;">
+          <div style="font-family:var(--mono); font-size:11px; color:var(--green); letter-spacing:0.15em; margin-bottom: 8px;">BACKLOG.md (repo)</div>
+          <p class="body" style="font-size:13px; line-height: 1.55; margin: 0;">Fuente <strong style="color:var(--text)">técnica</strong> · detalle completo de cada tarea · lo que <strong style="color:var(--text)">lee el agente</strong> al arrancar</p>
+        </div>
+
+        <div style="margin-top: 12px; padding: 18px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;">
+          <div style="font-family:var(--mono); font-size:11px; color:var(--orange); letter-spacing:0.15em; margin-bottom: 8px;">ASANA</div>
+          <p class="body" style="font-size:13px; line-height: 1.55; margin: 0;">Fuente <strong style="color:var(--text)">operacional</strong> · estado, asignación, sprint · lo que <strong style="color:var(--text)">ve el equipo</strong> en el día a día</p>
+        </div>
+
+        <p class="body" style="margin-top: 18px; font-size: 12.5px; color: var(--text-dim); font-style: italic; line-height: 1.55;">
+          Las dos fuentes viven en paralelo durante todo el proyecto. El "cómo" operativo (quién carga, en qué momento) se define a nivel equipo.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 14 — DIVISORIA: HASTA ACÁ PLANIFICACIÓN =========== -->
+  <section class="slide philosophy">
+    <div class="eyebrow">// punto de quiebre</div>
+    <div class="quote" style="max-width: 1100px;">
+      Hasta acá: <em>el método</em>.<br/>
+      Lo que sigue: <em>ejecución estándar</em>.
+    </div>
+
+    <div style="margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 1100px;">
+      <div>
+        <div style="font-family:var(--mono); font-size:11px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:14px;">// 01 — 04 · LO QUE ENSEÑA EL WORKSHOP</div>
+        <ul style="list-style: none; padding: 0;">
+          <li style="font-family:var(--sans); font-size: 16px; color: var(--text); padding: 8px 0; border-bottom: 1px solid var(--border);">→ Análisis del relevamiento</li>
+          <li style="font-family:var(--sans); font-size: 16px; color: var(--text); padding: 8px 0; border-bottom: 1px solid var(--border);">→ ADRs si surgen decisiones</li>
+          <li style="font-family:var(--sans); font-size: 16px; color: var(--text); padding: 8px 0; border-bottom: 1px solid var(--border);">→ Historias de Usuario</li>
+          <li style="font-family:var(--sans); font-size: 16px; color: var(--text); padding: 8px 0;">→ Tareas técnicas atómicas</li>
+        </ul>
+        <p style="font-family: var(--sans); font-size: 13px; color: var(--text-dim); margin-top: 16px; font-style: italic;">Es lo que vas a adoptar el lunes.</p>
+      </div>
+
+      <div>
+        <div style="font-family:var(--mono); font-size:11px; color:var(--text-dim); font-weight:700; letter-spacing:0.18em; margin-bottom:14px;">// 05 — 06 · LO QUE YA HACÉS</div>
+        <ul style="list-style: none; padding: 0;">
+          <li style="font-family:var(--sans); font-size: 16px; color: var(--text-mid); padding: 8px 0; border-bottom: 1px solid var(--border);">→ Desarrollo y testing (TDD)</li>
+          <li style="font-family:var(--sans); font-size: 16px; color: var(--text-mid); padding: 8px 0;">→ PR + feedback · merge · cierre</li>
+        </ul>
+        <p style="font-family: var(--sans); font-size: 13px; color: var(--text-dim); margin-top: 16px; font-style: italic;">Estándar Laburen — <code style="font-family:var(--mono);font-size:12px;color:var(--text-mid)">CONTEXTO-EMPRESA-METODOLOGIA.md</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 15 — DESARROLLO Y TESTING =========== -->
+  <section class="slide">
+    <div class="stage-header">
+      <div class="number">05</div>
+      <div class="info">
+        <div class="small">// etapa cinco</div>
+        <div class="big">Desarrollo + <em>testing</em>.</div>
+      </div>
+    </div>
+
+    <p class="lead">A partir de acá entrás en el ciclo que se repite por cada tarea T-XXX. <strong style="color:var(--text)">Una tarea = una branch = un PR.</strong> El método de planificación ya terminó — esto es ejecución estándar.</p>
+
+    <div class="two-col" style="margin-top: 28px;">
+      <div>
+        <h3 class="kicker">// principios universales</h3>
+        <ul class="check-list" style="margin-top: 0;">
+          <li><span class="marker">→</span><div><strong>Tomar tarea</strong> asignada del sprint actual en Asana</div></li>
+          <li><span class="marker">→</span><div><strong>Feature branch</strong> desde develop · trigger phrase corta al agente</div></li>
+          <li><span class="marker">→</span><div><strong>TDD</strong> Red → Green → Refactor</div></li>
+          <li><span class="marker">→</span><div><strong>Testing manual E2E</strong> si la tarea es testeable (lo hacés vos)</div></li>
+          <li><span class="marker">→</span><div><strong>Quality gates</strong> antes del PR · CI verde</div></li>
+          <li><span class="marker">→</span><div><strong>Conventional Commits</strong> con <code style="font-family:var(--mono);font-size:13px;color:var(--green)">T-XXX-NNN</code> en el scope</div></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="kicker">// trigger phrase al agente</h3>
+        <div class="code-block" style="font-size: 13px; padding: 18px 20px; margin-bottom: 18px;">
+<span class="ck">&gt;</span> Iniciar T-IF-010 del backend.
+        </div>
+        <p class="body" style="font-size: 13px; color: var(--text-dim); margin-bottom: 24px;">El agente lee <code style="font-family:var(--mono);font-size:12px;color:var(--green)">AGENTS.md</code> + workflow correspondiente + la tarea específica del backlog. No hace falta pegar contexto: el repo <em>es</em> el contexto.</p>
+
+        <div style="padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 3px; background: rgba(0,0,0,0.15);">
+          <div style="font-family:var(--mono); font-size:10px; color:var(--text-dim); font-weight:600; letter-spacing:0.18em; margin-bottom:6px;">// stack laburen</div>
+          <p class="body" style="font-size:12.5px; margin:0 0 8px 0; color:var(--text-dim); line-height:1.55;">Cloudflare Workers · TypeScript strict · pnpm · Vitest + miniflare · Husky · Wrangler · Langfuse.</p>
+          <p class="body" style="font-size:12px; margin:0; color:var(--text-dim); line-height:1.5;">
+            <strong style="color:var(--text-mid)">Fuente canónica:</strong> <code style="font-family:var(--mono);font-size:11px;color:var(--green)">laburen.gitbook.io/laburen-docs/7NYbsch7fTyhsarLow8z</code> · <strong style="color:var(--text-mid)">Resumen en repo:</strong> <code style="font-family:var(--mono);font-size:11px;color:var(--text-mid)">CONTEXTO-EMPRESA-METODOLOGIA.md</code>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight warning" style="margin-top: 24px;">
+      <div class="label">// regla dura del delta</div>
+      <div class="text" style="font-size: 18px; font-family: var(--sans); font-weight: 400;">Si la tarea es testeable E2E, <em style="font-style:italic;color:var(--orange)">la probás vos antes del PR</em>. No alcanza con tests automatizados verdes.</div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 16 — PR + FEEDBACK =========== -->
+  <section class="slide">
+    <div class="stage-header">
+      <div class="number">06</div>
+      <div class="info">
+        <div class="small">// etapa seis · ★ crítica</div>
+        <div class="big">PR + <em>feedback</em>.</div>
+      </div>
+    </div>
+
+    <p class="lead">El reviewer de IA es preciso si está bien configurado. Lo que <strong style="color:var(--text)">nunca</strong> hacemos es aplicar su feedback automáticamente: pasa por un protocolo de validación que termina con tu permiso explícito. <strong style="color:var(--text-mid)">Incluye el merge del Delta y el cierre en Asana.</strong></p>
+
+    <div class="two-col" style="margin-top: 28px;">
+      <div>
+        <h3 class="kicker">// flujo agnóstico de reviewer</h3>
+        <ul class="check-list" style="margin-top: 0;">
+          <li><span class="marker">1</span><div><strong>Configurar</strong> al reviewer con contexto del proyecto <span style="color:var(--text-dim); font-size:13px;">(<code style="font-family:var(--mono);font-size:12px;color:var(--green);">.github/instructions/</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--green);">.coderabbit.yaml</code>, etc.)</span></div></li>
+          <li><span class="marker">2</span><div><strong>Recibir</strong> feedback por el canal del reviewer</div></li>
+          <li><span class="marker">3</span><div><strong>Pegar</strong> el feedback al agente de código</div></li>
+          <li><span class="marker">4</span><div><strong>Agente categoriza</strong> cada item contra AGENTS.md</div></li>
+          <li><span class="marker">5</span><div><strong>Reporta</strong> al Delta con formato estructurado</div></li>
+          <li><span class="marker">6</span><div><strong>Aplica</strong> sólo tras permiso explícito · commits separados</div></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="kicker">// las 3 categorías</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 0;">
+          <div style="padding: 12px 16px; background: rgba(163, 245, 0, 0.06); border: 1px solid rgba(163, 245, 0, 0.25); border-radius: 3px;">
+            <div style="font-family:var(--mono); font-size:11px; color:var(--green); font-weight:700; letter-spacing:0.15em; margin-bottom:4px;">✓ VÁLIDO</div>
+            <p class="body" style="font-size:13px; margin:0;">Aplica las convenciones del proyecto · suma valor.</p>
+          </div>
+          <div style="padding: 12px 16px; background: rgba(255, 107, 53, 0.06); border: 1px solid rgba(255, 107, 53, 0.25); border-radius: 3px;">
+            <div style="font-family:var(--mono); font-size:11px; color:var(--orange); font-weight:700; letter-spacing:0.15em; margin-bottom:4px;">✗ INVÁLIDO</div>
+            <p class="body" style="font-size:13px; margin:0;">Contradice un ADR cerrado · sugiere <code style="font-family:var(--mono);font-size:11px;color:var(--orange)">any</code> / <code style="font-family:var(--mono);font-size:11px;color:var(--orange)">eslint-disable</code> · fuera de contexto.</p>
+          </div>
+          <div style="padding: 12px 16px; background: rgba(232, 245, 224, 0.05); border: 1px solid var(--border-strong); border-radius: 3px;">
+            <div style="font-family:var(--mono); font-size:11px; color:var(--text); font-weight:700; letter-spacing:0.15em; margin-bottom:4px;">⚠ DUDOSO</div>
+            <p class="body" style="font-size:13px; margin:0;">Preferencia estilística no cubierta · necesita decisión del Delta.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 17 — CASO DEL AUTOR: COPILOT → EMAIL → AGENTE =========== -->
+  <section class="slide">
+    <div class="eyebrow">// caso del autor · ejemplo concreto</div>
+    <h2 class="section">El flujo <em>real</em> que uso.</h2>
+    <p class="lead" style="max-width: 80ch;">Así proceso yo el feedback de PR. Cada Delta adapta al reviewer que use — el principio es el mismo.</p>
+
+    <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-items: stretch;">
+
+      <div style="position: relative; padding: 22px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;">
+        <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:10px;">01</div>
+        <div style="font-family:var(--serif); font-size: 22px; font-weight: 400; line-height: 1.1; letter-spacing:-0.015em; color: var(--text); margin-bottom: 8px;">Abro PR</div>
+        <div style="font-family:var(--sans); font-size: 12px; color: var(--text-dim); line-height: 1.5;">Push branch · PR a <code style="font-family:var(--mono);font-size:11px;color:var(--green)">develop</code></div>
+      </div>
+
+      <div style="position: relative; padding: 22px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;">
+        <div style="position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--green); font-family: var(--mono); font-size: 18px; z-index: 2;">→</div>
+        <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:10px;">02</div>
+        <div style="font-family:var(--serif); font-size: 22px; font-weight: 400; line-height: 1.1; letter-spacing:-0.015em; color: var(--text); margin-bottom: 8px;">Copilot revisa</div>
+        <div style="font-family:var(--sans); font-size: 12px; color: var(--text-dim); line-height: 1.5;">GitHub Copilot Code Review · lee <code style="font-family:var(--mono);font-size:11px;color:var(--green)">.github/instructions/</code></div>
+      </div>
+
+      <div style="position: relative; padding: 22px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;">
+        <div style="position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--green); font-family: var(--mono); font-size: 18px; z-index: 2;">→</div>
+        <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:10px;">03</div>
+        <div style="font-family:var(--serif); font-size: 22px; font-weight: 400; line-height: 1.1; letter-spacing:-0.015em; color: var(--text); margin-bottom: 8px;">Email al Delta</div>
+        <div style="font-family:var(--sans); font-size: 12px; color: var(--text-dim); line-height: 1.5;">Notificación con el contenido del review</div>
+      </div>
+
+      <div style="position: relative; padding: 22px 18px; background: var(--surface); border: 1px solid rgba(163, 245, 0, 0.4); border-radius: 4px; box-shadow: 0 0 18px rgba(163, 245, 0, 0.08);">
+        <div style="position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--green); font-family: var(--mono); font-size: 18px; z-index: 2;">→</div>
+        <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:10px;">04 · pivote</div>
+        <div style="font-family:var(--serif); font-size: 22px; font-weight: 400; line-height: 1.1; letter-spacing:-0.015em; color: var(--text); margin-bottom: 8px;">Pego al agente</div>
+        <div style="font-family:var(--sans); font-size: 12px; color: var(--text-dim); line-height: 1.5;">El AGENTS.md lo instruye a procesar con el protocolo del workflow</div>
+      </div>
+
+      <div style="position: relative; padding: 22px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;">
+        <div style="position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--green); font-family: var(--mono); font-size: 18px; z-index: 2;">→</div>
+        <div style="font-family:var(--mono); font-size:10px; color:var(--green); font-weight:700; letter-spacing:0.18em; margin-bottom:10px;">05</div>
+        <div style="font-family:var(--serif); font-size: 22px; font-weight: 400; line-height: 1.1; letter-spacing:-0.015em; color: var(--text); margin-bottom: 8px;">Pide permiso</div>
+        <div style="font-family:var(--sans); font-size: 12px; color: var(--text-dim); line-height: 1.5;">Reporta categorizado · espera mi OK · aplica · re-CI · <strong style="color:var(--text)">yo mergeo</strong></div>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 36px; padding: 18px 22px; border: 1px dashed var(--border-strong); border-radius: 3px; background: rgba(0,0,0,0.15);">
+      <div style="font-family:var(--mono); font-size:10px; color:var(--text-dim); font-weight:600; letter-spacing:0.18em; margin-bottom:8px;">// adaptaciones posibles</div>
+      <p class="body" style="font-size:13px; margin:0; color:var(--text-dim); line-height:1.6;">
+        <strong style="color:var(--text-mid)">CodeRabbit</strong> · feedback como comentarios en el PR + <code style="font-family:var(--mono);font-size:12px;color:var(--text-mid)">.coderabbit.yaml</code> &nbsp;·&nbsp;
+        <strong style="color:var(--text-mid)">Qodo Merge</strong> · revisión automática on-push &nbsp;·&nbsp;
+        <strong style="color:var(--text-mid)">Cursor BugBot</strong> · integrado en el IDE &nbsp;·&nbsp;
+        <strong style="color:var(--text-mid)">Manual con Opus</strong> · si no hay reviewer configurado. <br/><br/>
+        El canal cambia. El protocolo es el mismo: <strong style="color:var(--text)">validar → permiso explícito → aplicar → re-verificar</strong>.
+      </p>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 18 — MERGE DEL DELTA =========== -->
+  <section class="slide philosophy">
+    <div class="eyebrow">// regla central · cierre de la etapa 06</div>
+    <div class="quote">
+      El merge<br/>
+      lo hace <em>siempre</em><br/>
+      el <em>Delta</em>.
+    </div>
+    <p class="lead" style="margin-top: 48px; max-width: 80ch;">
+      Nunca el agente, aunque diga "todo verde, mergeo". Antes de mergear, confirmás: CI verde · review IA procesado · testing manual hecho · sin conflictos. Si todo está, squash and merge y borrás la branch. Después marcás la tarea como completada en Asana.
+    </p>
+    <div class="attribution">// human-in-the-loop · cierre del workflow</div>
+  </section>
+
+  <!-- =========== SLIDE 19 — ANTI-PATRONES =========== -->
+  <section class="slide">
+    <div class="eyebrow">// anti-patrones</div>
+    <h2 class="section">Las <em>seis trampas</em>.</h2>
+
+    <div class="agenda-grid" style="margin-top: 36px;">
+      <div class="agenda-item">
+        <div class="num" style="color: var(--orange);">01 · planificación</div>
+        <div class="title">Aceptar el primer output</div>
+        <div class="desc">Estás introduciendo errores que se propagan a todas las etapas siguientes.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num" style="color: var(--orange);">02 · planificación</div>
+        <div class="title">Tareas técnicas grandes</div>
+        <div class="desc">"Para que el agente las haga todas juntas." Garantía de auto-compact + bugs.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num" style="color: var(--orange);">03 · desarrollo</div>
+        <div class="title">Pasarle todo el AGENTS.md</div>
+        <div class="desc">El agente lo lee solo cuando lo necesita. Vos no lo cargás como prompt.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num" style="color: var(--orange);">04 · desarrollo</div>
+        <div class="title">Mergear sin testing manual</div>
+        <div class="desc">Los tests automatizados no cubren todo. El Delta prueba.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num" style="color: var(--orange);">05 · review</div>
+        <div class="title">Aplicar todo el feedback</div>
+        <div class="desc">Los IA reviewers se equivocan. Cada item se valida primero.</div>
+      </div>
+      <div class="agenda-item">
+        <div class="num" style="color: var(--orange);">06 · review</div>
+        <div class="title">Dejar que el agente mergee</div>
+        <div class="desc">Siempre el Delta. Sin excepciones, ni siquiera en hotfix.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 20 — LAS 5 PLANTILLAS + HANDBOOK =========== -->
+  <section class="slide">
+    <div class="eyebrow">// entregables · repo de plantillas</div>
+    <h2 class="section">Las <em>cinco plantillas</em>.</h2>
+    <p class="lead">Repo central de Laburen: <code style="font-family:var(--mono);font-size:0.7em;color:var(--green);background:rgba(163,245,0,0.08);padding:2px 8px;border-radius:3px;">laburen/delta-workflow-templates</code>. Cloná, copiá al proyecto, completá las secciones específicas.</p>
+
+    <div class="files-grid">
+      <div class="file-card">
+        <div class="icon">C</div>
+        <div class="text">
+          <div class="name">CONTEXTO-EMPRESA-METODOLOGIA.md</div>
+          <div class="desc">Stack Laburen + reglas duras del equipo. <strong style="color:var(--green)">Lectura previa obligatoria.</strong></div>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="icon">A</div>
+        <div class="text">
+          <div class="name">PLANTILLA-AGENTS.md</div>
+          <div class="desc">Estándar agnóstico de agente — comportamiento + anti auto-compact + project info.</div>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="icon">T</div>
+        <div class="text">
+          <div class="name">WORKFLOW_TAREA.md</div>
+          <div class="desc">19 pasos de TODO list obligatoria para desarrollar una T-XXX con TDD.</div>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="icon">R</div>
+        <div class="text">
+          <div class="name">WORKFLOW_PR_FEEDBACK.md</div>
+          <div class="desc">Validar, categorizar y aplicar feedback con confirmación del Delta.</div>
+        </div>
+      </div>
+      <div class="file-card">
+        <div class="icon">B</div>
+        <div class="text">
+          <div class="name">WORKFLOW_BUGFIX.md</div>
+          <div class="desc">Clasificación hotfix vs fix · diagnóstico antes del fix · TDD obligatorio.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 28px; padding: 18px 22px; border: 1px dashed var(--border-strong); border-radius: 3px; background: rgba(0,0,0,0.15); display: flex; align-items: center; gap: 20px;">
+      <div style="font-family:var(--mono); font-size:10px; color:var(--text-dim); font-weight:700; letter-spacing:0.18em; flex-shrink: 0;">// para profundizar</div>
+      <p class="body" style="font-size:13px; margin:0; color:var(--text-dim); line-height:1.55; flex: 1;">
+        El <strong style="color:var(--text-mid)">handbook de Laburen</strong> documenta stack, procesos, onboarding y AI Engineering completos: <code style="font-family:var(--mono);font-size:12px;color:var(--green)">laburen.gitbook.io/laburen-docs</code>
+      </p>
+    </div>
+  </section>
+
+  <!-- =========== SLIDE 21 — NO NEGOCIABLES =========== -->
+  <section class="slide">
+    <div class="eyebrow">// lo no negociable</div>
+    <h2 class="section">Si te <em>olvidás de todo</em>...</h2>
+    <p class="lead">...quedate con estas siete reglas:</p>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 32px;">
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--border);">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">01</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">Una tarea = una branch = un PR. <span style="color:var(--text-dim)">Squash and merge a develop.</span></span>
+      </div>
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--border);">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">02</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">TDD siempre. <span style="color:var(--text-dim)">Test primero, código después. Sin excepciones.</span></span>
+      </div>
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--border);">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">03</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">Sin <code style="font-family:var(--mono);font-size:15px;color:var(--orange)">any</code>, sin <code style="font-family:var(--mono);font-size:15px;color:var(--orange)">@ts-ignore</code>, sin <code style="font-family:var(--mono);font-size:15px;color:var(--orange)">--no-verify</code>. <span style="color:var(--text-dim)">RULE 0 tolerancia cero.</span></span>
+      </div>
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--border);">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">04</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">Tareas atómicas. <span style="color:var(--text-dim)">≤ 5 archivos, ≤ 4h humanas, ≤ 10 sub-tareas.</span></span>
+      </div>
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--border);">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">05</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">Testing manual E2E antes del PR. <span style="color:var(--text-dim)">Si es testeable, lo probás vos.</span></span>
+      </div>
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--border);">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">06</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">PR feedback se valida antes de aplicar. <span style="color:var(--text-dim)">Categorías ✓/✗/⚠ + confirmación explícita.</span></span>
+      </div>
+      <div style="display:flex; gap: 24px; align-items: baseline; padding: 16px 0;">
+        <span style="font-family:var(--mono); color:var(--green); font-size: 14px; font-weight: 700; min-width: 32px;">07</span>
+        <span style="font-family:var(--sans); font-size: 18px; color: var(--text);">El merge lo hace siempre el Delta. <span style="color:var(--text-dim)">Nunca el agente. Sin excepciones.</span></span>
+      </div>
+    </div>
+
+    <div style="margin-top: 28px; padding: 14px 20px; border-left: 2px solid var(--border-strong); background: rgba(0,0,0,0.15);">
+      <div style="font-family:var(--mono); font-size:10px; color:var(--text-dim); font-weight:600; letter-spacing:0.18em; margin-bottom:6px;">// checklist operativo</div>
+      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-dim); line-height: 1.55; margin: 0;">
+        Para el detalle táctico del cierre de cada tarea (tests, coverage, CI, branch, BACKLOG, Asana): <code style="font-family:var(--mono);font-size:12px;color:var(--text-mid)">WORKFLOW_TAREA.md</code> en el repo de plantillas.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  const totalEl = document.getElementById('total');
+  const nowEl = document.getElementById('now');
+  const pf = document.getElementById('pf');
+  let cur = 0;
+  totalEl.textContent = String(total).padStart(2, '0');
+
+  function pad(n) { return String(n + 1).padStart(2, '0'); }
+
+  function go(i) {
+    if (i < 0 || i >= total) return;
+    slides[cur].classList.remove('active');
+    cur = i;
+    slides[cur].classList.add('active');
+    nowEl.textContent = pad(cur);
+    pf.style.width = ((cur + 1) / total * 100) + '%';
+    // Mantener slide en URL (best-effort, falla silenciosamente en sandboxes)
+    try { history.replaceState(null, '', '#' + (cur + 1)); } catch (_) {}
+  }
+
+  function next() { go(cur + 1); }
+  function prev() { go(cur - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); go(0); }
+    if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+    if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+
+  // Click anywhere on slide to advance (right half) or go back (left half)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('a, button')) return;
+    const x = e.clientX / window.innerWidth;
+    if (x > 0.5) next(); else prev();
+  });
+
+  // Initial load — soporta #N si está disponible, sino arranca en 0
+  let initial = 0;
+  try {
+    const hash = parseInt((location.hash || '').slice(1), 10);
+    if (hash && hash >= 1 && hash <= total) initial = hash - 1;
+  } catch (_) {}
+  go(initial);
+</script>
+
+</body>
+</html>
